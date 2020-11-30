@@ -1,0 +1,30 @@
+{
+    "configurations": [
+        {
+            "name": "Win32",
+            "includePath": [
+                "${workspaceFolder}/**",
+                "./USER",
+                "./CORE",
+                "./FreeRTOS/include",
+                "./FreeRTOS/portable/**",
+                "./STM32F10x_FWLib/inc",
+                "./SYSTEM/RTT",
+                "./Sdk/inc"
+    
+            ],
+            "defines": [
+                "_DEBUG",
+                "UNICODE",
+                "_UNICODE",
+                "STM32F10X_HD",
+                "USE_STDPERIPH_DRIVER"
+            ],
+            "compilerPath": "C:\\MinGW\\bin\\gcc.exe",
+            "cStandard": "c99",
+            "cppStandard": "c++98",
+            "intelliSenseMode": "clang-x64"
+        }
+    ],
+    "version": 4
+}
