@@ -7,11 +7,102 @@
 #define DEMO_TASK_STK_SIZE   256
 
 //PWM -> PA8 PA9 PA10 PA11   PC8 PC9
+#define M_ab(state, pwm)  do{}while(0); //state: 0->stop;1->forward;2->backward
+
+
 //EXTI-> PC0 PC1 PC2 PC3 PC4 PC5
+#define SWITCH_PORT         GPIOC
+#define SW1_PIN             GPIO_Pin_0
+#define SW2_PIN             GPIO_Pin_1
+#define SW3_PIN             GPIO_Pin_2
+#define SW4_PIN             GPIO_Pin_3
+#define SW5_PIN             GPIO_Pin_4
+#define SW6_PIN             GPIO_Pin_5
+//---
+#define SW1_DATA            GPIO_ReadInputDataBit(SWITCH_PORT, SW1_PIN)
+#define SW2_DATA            GPIO_ReadInputDataBit(SWITCH_PORT, SW2_PIN)
+#define SW3_DATA            GPIO_ReadInputDataBit(SWITCH_PORT, SW3_PIN)
+#define SW4_DATA            GPIO_ReadInputDataBit(SWITCH_PORT, SW4_PIN)
+#define SW5_DATA            GPIO_ReadInputDataBit(SWITCH_PORT, SW5_PIN)
+#define SW6_DATA            GPIO_ReadInputDataBit(SWITCH_PORT, SW6_PIN)
+
+//BUTTON -> PB0 PB1
+#define BUTTON_PORT         GPIOB
+#define BUTTON_FORWARD_PIN  GPIO_Pin_0
+#define BUTTON_BACKWARD_PIN GPIO_Pin_1
+//---
+#define BUTTON_FORWARD_DATA     GPIO_ReadInputDataBit(BUTTON_PORT, BUTTON_FORWARD_PIN)
+#define BUTTON_BACKWARD_DATA    GPIO_ReadInputDataBit(BUTTON_PORT, BUTTON_BACKWARD_PIN)
+
+
+//----------------------------------------------------------
+void motor_ctrl(uint8_t motor_index, uint8_t state, uint8_t speed)
+{
+    switch(state)
+    {
+        case M_STOP:
+        {
+            if(motor_index == M_ab)
+            {
+                TIM_SetCompare1(TIM1, 0);
+                TIM_SetCompare2(TIM1, 0);
+            }
+            else if(motor_index == M_c)
+            {
+                TIM_SetCompare3(TIM1, 0);
+                TIM_SetCompare4(TIM1, 0);
+            }
+            else if(motor_index == M_d)
+            {
+                TIM_SetCompare3(TIM3, 0);
+                TIM_SetCompare4(TIM3, 0);
+            }
+        }
+        break;
+        case M_FORWARD:
+        {
+            if(motor_index == M_ab)
+            {
+
+            }
+            else if(motor_index == M_c)
+            {
+
+            }
+            else if(motor_index == M_d)
+            {
+                
+            }
+        }
+        break;
+        case M_BACKWARD:
+        {
+            if(motor_index == M_ab)
+            {
+
+            }
+            else if(motor_index == M_c)
+            {
+
+            }
+            else if(motor_index == M_d)
+            {
+                
+            }
+        }
+        break;
+        default:
+        break;
+    }
+}
+
+//-----------------------------------------------
 
 static void bsp_init(void)
 {
     GPIO_InitTypeDef        GPIO_InitStructure;
+//--------------------------------------------------------------
+//pwm
 #if 0
     RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA, ENABLE);
     GPIO_InitStructure.GPIO_Pin = GPIO_Pin_8|GPIO_Pin_9|GPIO_Pin_10|GPIO_Pin_11; //TIM_CH1-4
@@ -63,6 +154,7 @@ static void bsp_init(void)
     TIM_SetCompare4(TIM1, 100);//SystemCoreClock/(2*1000)); //
 #endif
 //--------------------------------------------------------------
+//pwm
 #if 1
     //PC8,PC9 -> TIM3 -> TIM_CH3-4
     RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM3, ENABLE);
@@ -99,6 +191,7 @@ static void bsp_init(void)
     TIM_SetCompare4(TIM3, 100);//SystemCoreClock/(2*1000)
 #endif
 //--------------------------------------------------------------
+//switch
 #if 1
     //GPIO_InitTypeDef        GPIO_InitStructure;
 	RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOC, ENABLE);	
@@ -156,6 +249,7 @@ static void bsp_init(void)
 	NVIC_Init(&NVIC_InitStructure);
 #endif
 //--------------------------------------------------------------
+//button
 #if 1
     RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOB, ENABLE);
     GPIO_InitStructure.GPIO_Pin = GPIO_Pin_0|GPIO_Pin_1;
@@ -250,4 +344,35 @@ void demo_task_init(void)
       
     demo_printf("demo task init \n");
 }
+
+//===============================================
+#if 1  //demo
+void button_task(void *param)
+{
+    while(1)
+    {
+        if(BUTTON_FORWARD_DATA == BUTTON_DOWN)
+        {
+            //start forward
+        }
+        else if(BUTTON_BACKWARD_DATA == BUTTON_DOWN)
+        {
+            //start backward
+        }
+        vTaskDelay(200/portTICK_PERIOD_MS);
+    }
+
+}
+
+void motor_task(void *param)
+{
+    while(1)
+    {
+
+
+    }
+}
+
+#endif
+
 

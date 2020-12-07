@@ -18,10 +18,29 @@
 #include "timers.h"
 
 
+
+typedef enum 
+{
+    M_STOP,
+    M_FORWARD,
+    M_BACKWARD,
+}m_state_e;
+
+typedef enum
+{
+    M_ab,
+    M_c,
+    M_d,
+}m_index_e;
+
+typedef enum
+{
+    BUTTON_DOWN,
+    BUTTON_UP,
+    BUTTON_PRESS,
+    
+}button_state_t;
+
 extern void demo_task_init(void);
-
-
-
-
 
 #endif
