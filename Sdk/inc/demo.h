@@ -41,6 +41,14 @@ typedef enum
     
 }button_state_t;
 
+typedef enum 
+{
+    WINDOW_FORWARD,
+    WINDOW_BACKWARD,
+    WINDOW_UP,
+    WINDOW_DOWN,
+}window_state_t;
+
 extern void demo_task_init(void);
 
 #endif
