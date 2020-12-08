@@ -43,11 +43,34 @@ typedef enum
 
 typedef enum 
 {
+    WINDOW_OPEN,
+    WINDOW_CLOSE,
+    //-------------
     WINDOW_FORWARD,
     WINDOW_BACKWARD,
     WINDOW_UP,
     WINDOW_DOWN,
 }window_state_t;
+
+typedef enum 
+{
+    SW_NULL,
+    SW1_DOWN,
+    SW2_DOWN,
+    SW3_DOWN,
+    SW4_DOWN,
+    SW5_DOWN,
+    SW6_DOWN,
+}sw_state_t;
+
+
+typedef struct 
+{
+    uint8_t msg_id;
+    uint8_t value;
+}msg_t;
+
+
 
 extern void demo_task_init(void);
 
