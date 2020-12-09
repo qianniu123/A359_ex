@@ -21,9 +21,10 @@
 
 typedef enum 
 {
-    M_STOP,
+    M_STOP  = 0,
     M_FORWARD,
     M_BACKWARD,
+    M_BRAKE,
 }m_state_e;
 
 typedef enum
@@ -35,32 +36,43 @@ typedef enum
 
 typedef enum
 {
-    BUTTON_DOWN,
-    BUTTON_UP,
+    BUTTON_DOWN = 0,
+    BUTTON_UP   = 1,
     BUTTON_PRESS,
     
 }button_state_t;
 
 typedef enum 
 {
+    SW_DOWN = 0, 
+    SW_UP   = 1,
+
+}switch_state_t;
+
+typedef enum 
+{
+    WINDOW_STOP = 0,  
+     
     WINDOW_OPEN,
-    WINDOW_CLOSE,
-    //-------------
     WINDOW_FORWARD,
-    WINDOW_BACKWARD,
     WINDOW_UP,
+    WINDOW_OPENED,
+    
+    WINDOW_CLOSE,
     WINDOW_DOWN,
+    WINDOW_BACKWARD,
+    WINDOW_CLOSED,
 }window_state_t;
 
 typedef enum 
 {
-    SW_NULL,
-    SW1_DOWN,
-    SW2_DOWN,
-    SW3_DOWN,
-    SW4_DOWN,
-    SW5_DOWN,
-    SW6_DOWN,
+    SW_STATE_NULL = 0,
+    SW1_STATE_CHANGE,
+    SW2_STATE_CHANGE,
+    SW3_STATE_CHANGE,
+    SW4_STATE_CHANGE,
+    SW5_STATE_CHANGE,
+    SW6_STATE_CHANGE,
 }sw_state_t;
 
 
@@ -71,6 +83,11 @@ typedef struct
 }msg_t;
 
 
+typedef struct 
+{
+    uint8_t state;//open, close
+
+}window_t;
 
 extern void demo_task_init(void);
 

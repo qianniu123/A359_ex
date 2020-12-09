@@ -163,6 +163,7 @@ NVIC value of 255. */
 #define vPortSVCHandler 	                    SVC_Handler
 //#define xPortSysTickHandler SysTick_Handler  //define in stm32f10x_it.c
 
+//#define configCHECK_FOR_STACK_OVERFLOW			2
 #define RTOS_DEBUG_ENABLE                       0
 #if RTOS_DEBUG_ENABLE
 #define configCHECK_FOR_STACK_OVERFLOW			2   //for debug, when release, set 0 

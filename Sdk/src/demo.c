@@ -7,15 +7,15 @@
 #define DEMO_TASK_STK_SIZE      128
 
 #define BUTTON_TASK_NAME        "BUTTON_TASK"
-#define BUTTON_TASK_PRI         3 
+#define BUTTON_TASK_PRI         2          //low pri 
 #define BUTTON_TASK_STK_SIZE    128
 
-#define MOTOR_TASK_NAME         "MOTOR_TASK"
-#define MOTOR_TASK_PRI          3 
-#define MOTOR_TASK_STK_SIZE     128
+#define WINDOW_TASK_NAME         "MOTOR_TASK"
+#define WINDOW_TASK_PRI          3 
+#define WINDOW_TASK_STK_SIZE     128
 
 #define SW_TASK_NAME            "SW_TASK"
-#define SW_TASK_PRI             3 
+#define SW_TASK_PRI             5           //high pri 
 #define SW_TASK_STK_SIZE        128
 
 #define SW_QUEUE_SIZE       5
@@ -23,6 +23,7 @@ QueueHandle_t queue_sw = NULL;
 #define MOTOR_QUEUE_SIZE    5
 QueueHandle_t queue_motor = NULL;
 
+window_t window = {0};
 //-------------------------------------------------------------------------------
 //PWM -> PA8 PA9 PA10 PA11   PC8 PC9
 #define M_ab(state, pwm)  do{}while(0); //state: 0->stop;1->forward;2->backward
@@ -58,9 +59,10 @@ QueueHandle_t queue_motor = NULL;
 #define LED_RD_DATA         GPIO_ReadOutputDataBit(LED_PORT, LED_PIN) //GPIO_ReadInputDataBit(LED_PORT, LED_PIN) //
 #define LED_WR_DATA(val)    GPIO_WriteBit(LED_PORT, LED_PIN, val)
 //----------------------------------------------------------------------
+static void demo_task(void *param);
 static void button_task(void *param);
 static void switch_task(void *param);
-static void motor_task(void *param);
+static void window_task(void *param);
 //----------------------------------------------------------------------
 static void motor_ctrl(uint8_t motor_index, uint8_t state, uint8_t speed)
 {
@@ -73,12 +75,12 @@ static void motor_ctrl(uint8_t motor_index, uint8_t state, uint8_t speed)
                 TIM_SetCompare3(TIM3, 0);//FOR_FSS
                 TIM_SetCompare4(TIM3, 0);//BAC_B
             }
-            else if(motor_index == M_c)
+            if(motor_index == M_c)
             {
                 TIM_SetCompare1(TIM1, 0);//UP1_F
                 TIM_SetCompare2(TIM1, 0);//DOW1_B
             }
-            else if(motor_index == M_d)
+            if(motor_index == M_d)
             {
                 TIM_SetCompare3(TIM1, 0);//UP2_F
                 TIM_SetCompare4(TIM1, 0);//DOW2_B
@@ -87,17 +89,17 @@ static void motor_ctrl(uint8_t motor_index, uint8_t state, uint8_t speed)
         break;
         case M_FORWARD:
         {
-           if(motor_index == M_ab)
+            if(motor_index == M_ab)
             {
                 TIM_SetCompare3(TIM3, 255);//FOR_FSS
                 TIM_SetCompare4(TIM3, 0);//BAC_B
             }
-            else if(motor_index == M_c)
+            if(motor_index == M_c)
             {
                 TIM_SetCompare1(TIM1, 255);//UP1_F
                 TIM_SetCompare2(TIM1, 0);//DOW1_B
             }
-            else if(motor_index == M_d)
+            if(motor_index == M_d)
             {
                 TIM_SetCompare3(TIM1, 255);//UP2_F
                 TIM_SetCompare4(TIM1, 0);//DOW2_B
@@ -111,16 +113,21 @@ static void motor_ctrl(uint8_t motor_index, uint8_t state, uint8_t speed)
                 TIM_SetCompare3(TIM3, 0);//FOR_FSS
                 TIM_SetCompare4(TIM3, 255);//BAC_B
             }
-            else if(motor_index == M_c)
+            if(motor_index == M_c)
             {
                 TIM_SetCompare1(TIM1, 0);//UP1_F
                 TIM_SetCompare2(TIM1, 255);//DOW1_B
             }
-            else if(motor_index == M_d)
+            if(motor_index == M_d)
             {
                 TIM_SetCompare3(TIM1, 0);//UP2_F
                 TIM_SetCompare4(TIM1, 255);//DOW2_B
             }
+        }
+        break;
+        case M_BRAKE:
+        {
+
         }
         break;
         default:
@@ -150,6 +157,12 @@ static void exti_irq_set(IRQn_Type type, FunctionalState state)
 	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
 	NVIC_InitStructure.NVIC_IRQChannelCmd = state;
 	NVIC_Init(&NVIC_InitStructure);
+}
+
+static void change_window_state(uint8_t new_state)
+{
+    msg_t msg = {new_state, 0};
+    xQueueSend(queue_motor, &msg, 0);
 }
 //----------------------------------------------------------------------
 
@@ -203,7 +216,7 @@ static void bsp_init(void)
     TIM_CtrlPWMOutputs(TIM1,ENABLE);
 	TIM_Cmd(TIM1, ENABLE); 
     
-    #if 1
+    #if 0
     TIM_SetCompare1(TIM1, 50);//SystemCoreClock/(2*1000)); // ???
     TIM_SetCompare2(TIM1, 50);//SystemCoreClock/(2*1000)); //
     TIM_SetCompare3(TIM1, 100);//SystemCoreClock/(2*1000)); //
@@ -244,7 +257,7 @@ static void bsp_init(void)
     //TIM_ARRPreloadConfig(TIM3, ENABLE);
 	TIM_Cmd(TIM3, ENABLE);
     
-    #if 1
+    #if 0
     TIM_SetCompare3(TIM3, 100);//SystemCoreClock/(2*1000)
     TIM_SetCompare4(TIM3, 100);//SystemCoreClock/(2*1000)
     #endif
@@ -321,13 +334,16 @@ static void bsp_init(void)
 //LED
 #if 1
     RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOB, ENABLE);
+    #if 1 //jtag or io (disable JTAG-DP, enable SW-DP, enable PB3 IO)
     RCC_APB2PeriphClockCmd(RCC_APB2Periph_AFIO, ENABLE);
-	GPIO_PinRemapConfig(GPIO_Remap_SWJ_Disable, ENABLE);
+	GPIO_PinRemapConfig(GPIO_Remap_SWJ_JTAGDisable, ENABLE);
+    #endif
     GPIO_InitStructure.GPIO_Pin = LED_PIN;
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP; 
 	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
 	GPIO_Init(LED_PORT, &GPIO_InitStructure);
-    GPIO_SetBits(LED_PORT, LED_PIN);
+    //GPIO_SetBits(LED_PORT, LED_PIN);
+    GPIO_ResetBits(LED_PORT, LED_PIN);
 #endif
     demo_printf("%s: bsp init\n", __func__);
 }
@@ -338,7 +354,7 @@ void EXTI0_IRQHandler(void)
     {
         demo_printf("%s: 000\n", __func__);
         exti_irq_set(EXTI0_IRQn, DISABLE);
-        msg_t msg = {SW1_DOWN, 0};
+        msg_t msg = {SW1_STATE_CHANGE, 0};
         BaseType_t xHigherPriorityTaskWoken = pdFALSE;
         xQueueSendFromISR(queue_sw, &msg, &xHigherPriorityTaskWoken);
         portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
@@ -351,7 +367,7 @@ void EXTI1_IRQHandler(void)
     {
         demo_printf("%s: 111\n", __func__);
         exti_irq_set(EXTI1_IRQn, DISABLE);
-        msg_t msg = {SW2_DOWN, 0};
+        msg_t msg = {SW2_STATE_CHANGE, 0};
         BaseType_t xHigherPriorityTaskWoken = pdFALSE;
         xQueueSendFromISR(queue_sw, &msg, &xHigherPriorityTaskWoken);
         portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
@@ -364,7 +380,7 @@ void EXTI2_IRQHandler(void)
     {
         demo_printf("%s: 222\n", __func__);
         exti_irq_set(EXTI2_IRQn, DISABLE);
-        msg_t msg = {SW3_DOWN, 0};
+        msg_t msg = {SW3_STATE_CHANGE, 0};
         BaseType_t xHigherPriorityTaskWoken = pdFALSE;
         xQueueSendFromISR(queue_sw, &msg, &xHigherPriorityTaskWoken);
         portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
@@ -377,7 +393,7 @@ void EXTI3_IRQHandler(void)
     {
         demo_printf("%s: 333\n", __func__);
         exti_irq_set(EXTI3_IRQn, DISABLE);
-        msg_t msg = {SW4_DOWN, 0};
+        msg_t msg = {SW4_STATE_CHANGE, 0};
         BaseType_t xHigherPriorityTaskWoken = pdFALSE;
         xQueueSendFromISR(queue_sw, &msg, &xHigherPriorityTaskWoken);
         portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
@@ -390,7 +406,7 @@ void EXTI4_IRQHandler(void)
     {
         demo_printf("%s: 444\n", __func__);
         exti_irq_set(EXTI4_IRQn, DISABLE);
-        msg_t msg = {SW5_DOWN, 0};
+        msg_t msg = {SW5_STATE_CHANGE, 0};
         BaseType_t xHigherPriorityTaskWoken = pdFALSE;
         xQueueSendFromISR(queue_sw, &msg, &xHigherPriorityTaskWoken);
         portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
@@ -403,25 +419,12 @@ void EXTI9_5_IRQHandler(void)
     {
         demo_printf("%s: 555\n", __func__);
         exti_irq_set(EXTI9_5_IRQn, DISABLE);
-        msg_t msg = {SW6_DOWN, 0};
+        msg_t msg = {SW6_STATE_CHANGE, 0};
         BaseType_t xHigherPriorityTaskWoken = pdFALSE;
         xQueueSendFromISR(queue_sw, &msg, &xHigherPriorityTaskWoken);
         portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
         EXTI_ClearITPendingBit(EXTI_Line5);
     }
-}
-
-void demo_task(void *param)
-{
-    uint32_t demo_cnt = 0;
-    while(1)
-    {
-        demo_printf("%s: .... %d\n", __func__, demo_cnt);
-        demo_cnt ++;
-        led_toggle();
-        vTaskDelay(3000/portTICK_PERIOD_MS);
-    }
-
 }
 
 
@@ -453,14 +456,14 @@ void demo_task_init(void)
     {
        demo_printf("create queue_motor error\n"); 
     }
-    if(pdFALSE == xTaskCreate(motor_task, 
-                                MOTOR_TASK_NAME,
-                                MOTOR_TASK_STK_SIZE,
+    if(pdFALSE == xTaskCreate(window_task, 
+                                WINDOW_TASK_NAME,
+                                WINDOW_TASK_STK_SIZE,
                                 NULL,
-                                MOTOR_TASK_PRI,
+                                WINDOW_TASK_PRI,
                                 NULL))
     {
-        demo_printf("create motor_task error\n");
+        demo_printf("create window_task error\n");
     }
 
     queue_sw = xQueueCreate(SW_QUEUE_SIZE, sizeof(msg_t));
@@ -478,14 +481,26 @@ void demo_task_init(void)
         demo_printf("create switch_task error");
     }
 
+    change_window_state(WINDOW_STOP);
     demo_printf("demo task init \n");
 }
 
 //===============================================
 #if 1  //demo
+void demo_task(void *param)
+{
+    uint32_t demo_cnt = 0;
+    while(1)
+    {
+        demo_printf("%s: .... %d\n", __func__, demo_cnt);
+        demo_cnt ++;
+        //led_toggle();
+        vTaskDelay(10*1000/portTICK_PERIOD_MS);
+    }
+}
+
 static void button_task(void *param)
 {
-    msg_t msg = {0};
     while(1)
     {
         if(BUTTON_FORWARD_DATA == BUTTON_DOWN)
@@ -495,8 +510,10 @@ static void button_task(void *param)
             {
                 demo_printf("%s: button forward down\n", __func__);
                 //start forward -> send msg
-                msg.msg_id = WINDOW_FORWARD;
-                //xQueueSend(queue_motor, &msg, 0);
+                if(window.state < WINDOW_OPEN || window.state > WINDOW_OPENED)
+                {
+                    change_window_state(WINDOW_OPEN);
+                }
             }
         }
         else if(BUTTON_REVERSE_DATA == BUTTON_DOWN)
@@ -506,70 +523,191 @@ static void button_task(void *param)
             {
                 demo_printf("%s: button backward down\n", __func__);
                 //start backward -> send msg
-                msg.msg_id = WINDOW_DOWN;
-                //xQueueSend(queue_motor, &msg, 0);
+                if(window.state < WINDOW_CLOSE || window.state > WINDOW_CLOSED)
+                {
+                   change_window_state(WINDOW_CLOSE);
+                }
             }
         }
         else 
         {
-            demo_printf("%s: button_forward_data = %d, button_backward_data = %d\n", __func__, BUTTON_FORWARD_DATA, BUTTON_REVERSE_DATA);
+            //demo_printf("%s: button_forward_data = %d, button_backward_data = %d\n", __func__, BUTTON_FORWARD_DATA, BUTTON_REVERSE_DATA);
+            if(BUTTON_FORWARD_DATA == BUTTON_UP && BUTTON_REVERSE_DATA == BUTTON_UP )
+            {
+                vTaskDelay(20/portTICK_PERIOD_MS);
+                if(BUTTON_FORWARD_DATA == BUTTON_UP && BUTTON_REVERSE_DATA == BUTTON_UP)
+                {
+                    //demo_printf("%s: button forward&backward up\n", __func__);
+                    //stop close -> send msg
+                    if(window.state != WINDOW_STOP)
+                    {
+                        change_window_state(WINDOW_STOP);
+                    }
+                }
+            }
         }
         vTaskDelay(1000/portTICK_PERIOD_MS);//100
     }
 
 }
 
-static void motor_task(void *param)
+static void window_task(void *param)
 {
     msg_t msg = {0};
     while(1)
     {
         if(pdTRUE == xQueueReceive(queue_motor, &msg, portMAX_DELAY))
         {
-            uint8_t window_state = msg.msg_id;//back->forward->up  or up->down->back
-            demo_printf("%s: window_state = %d\n", __func__, window_state);
-            switch(window_state)
+            window.state = msg.msg_id;
+            demo_printf("%s: window.state = %d\n", __func__, window.state);
+            switch(window.state)
             {
-                case WINDOW_FORWARD:
+                case WINDOW_STOP:
                 {
-                    if(SW_BAC_DATA != 0)
-                    {
-                        motor_ctrl(M_ab, M_FORWARD, 255);
-                    }
+                    demo_printf("%s: WINDOW_STOP\n", __func__);
+                    #if 1
+                    motor_ctrl(M_ab, M_STOP, 0);
+                    motor_ctrl(M_c, M_STOP, 0);
+                    motor_ctrl(M_d, M_STOP, 0);
+                    #endif
                 }
                 break;
-                case WINDOW_BACKWARD:
+                case WINDOW_OPEN:
+                {
+                    demo_printf("%s: WINDOW_OPEN\n", __func__);
+                    #if 0 //for test
+                    motor_ctrl(M_ab, M_FORWARD, 255);
+                    motor_ctrl(M_c, M_FORWARD, 255);
+                    motor_ctrl(M_d, M_FORWARD, 255);
+                    #else 
+                    if(SW_FOR_DATA != SW_DOWN)
+                    {
+                        change_window_state(WINDOW_FORWARD);
+                    }
+                    else 
+                    {
+                        if(SW_UP1_DATA != SW_DOWN || SW_UP2_DATA != SW_DOWN)
+                        {
+                            change_window_state(WINDOW_UP);
+                        }
+                        else 
+                        {
+                            change_window_state(WINDOW_OPENED);
+                        }
+                    }
+                    #endif
+                }
+                break;
+                case WINDOW_FORWARD:
                 {
                     if(SW_FOR_DATA != 0)
                     {
-                        motor_ctrl(M_ab, M_BACKWARD, 255);
+                        motor_ctrl(M_ab, M_FORWARD, 255);
+                        motor_ctrl(M_c, M_STOP, 0);
+                        motor_ctrl(M_d, M_STOP, 0);
                     }
                 }
                 break;
                 case WINDOW_UP:
                 {
-                    if(SW_UP1_DATA != 0)
+                    if(SW_FOR_DATA == SW_DOWN)
                     {
-                        motor_ctrl(M_c, M_FORWARD, 255);
+                        motor_ctrl(M_ab, M_STOP, 0);
+                        if(SW_UP1_DATA != SW_DOWN)
+                        {
+                            motor_ctrl(M_c, M_FORWARD, 255);
+                        }
+                        if(SW_UP2_DATA != SW_DOWN)
+                        {
+                            motor_ctrl(M_d, M_FORWARD, 255);
+                        }
                     }
-                    if(SW_UP2_DATA != 0)
+                }
+                break;
+                case WINDOW_OPENED:
+                {
+                    motor_ctrl(M_ab, M_STOP, 0);
+                    if(SW_UP1_DATA == SW_DOWN)
                     {
-                        motor_ctrl(M_d, M_FORWARD, 255);
+                        motor_ctrl(M_c, M_STOP, 0); 
                     }
+                    if(SW_UP2_DATA == SW_DOWN)
+                    {
+                        motor_ctrl(M_d, M_STOP, 0);
+                    }
+                }
+                break;
+                //--------------------------------------
+                case WINDOW_CLOSE:
+                {
+                    demo_printf("%s: WINDOW_CLOSE\n", __func__);
+                    #if 0 //for test
+                    motor_ctrl(M_ab, M_BACKWARD, 255);
+                    motor_ctrl(M_c, M_BACKWARD, 255);
+                    motor_ctrl(M_d, M_BACKWARD, 255);
+                    #else 
+                    if(SW_DOW1_DATA != SW_DOWN || SW_DOW2_DATA != SW_DOWN)
+                    {
+                        change_window_state(WINDOW_DOWN);
+                    }
+                    else 
+                    {
+                        if(SW_BAC_DATA != SW_DOWN) 
+                        {
+                            change_window_state(WINDOW_BACKWARD);
+                        }
+                        else 
+                        {
+                            change_window_state(WINDOW_CLOSED);
+                        }
+                    }
+                    #endif
                 }
                 break;
                 case WINDOW_DOWN:
                 {
-                    if(SW_DOW1_DATA != 0)
+                    motor_ctrl(M_ab, M_STOP, 0);
+                    if(SW_DOW1_DATA != SW_DOWN)
                     {
                         motor_ctrl(M_c, M_BACKWARD, 255);
                     }
-                    if(SW_DOW2_DATA != 0)
+                    if(SW_DOW2_DATA != SW_DOWN)
                     {
                         motor_ctrl(M_d, M_BACKWARD, 255);
                     }
                 }
                 break;
+                case WINDOW_BACKWARD:
+                {
+                    if(SW_DOW1_DATA == SW_DOWN)
+                    {
+                        motor_ctrl(M_c, M_STOP, 0);
+                    }
+                    if(SW_DOW2_DATA == SW_DOWN)
+                    {
+                        motor_ctrl(M_d, M_STOP, 0);
+                    }
+
+                    if(SW_DOW1_DATA == SW_DOWN && SW_DOW2_DATA == SW_DOWN)
+                    {
+                        if(SW_FOR_DATA != SW_DOWN)
+                        {
+                            motor_ctrl(M_ab, M_BACKWARD, 255);
+                        }
+                    }  
+                }
+                break;
+                case WINDOW_CLOSED:
+                {
+                    if(SW_BAC_DATA == SW_DOWN)
+                    {
+                        motor_ctrl(M_ab, M_STOP, 0);
+                        motor_ctrl(M_c, M_STOP, 0);
+                        motor_ctrl(M_d, M_STOP, 0); 
+                    }
+                }
+                break;
+                
                 default:
                 break;
             }
@@ -589,43 +727,76 @@ static void switch_task(void *param)
             demo_printf("%s: sw_state = %d\n", __func__, sw_state);
             switch(sw_state)
             {
-                case SW1_DOWN:
+                case SW1_STATE_CHANGE:
                 {
-                    demo_printf("%s: sw1_data = %d\n", __func__, SW_BAC_DATA);
+                    demo_printf("%s: sw1 %s\n", __func__, (SW_BAC_DATA==SW_DOWN?"down":"up"));
                     exti_irq_set(EXTI0_IRQn, ENABLE);
+
+                    if(SW_BAC_DATA == SW_DOWN)
+                    {
+                        change_window_state(WINDOW_CLOSED);
+                    }
+                    else 
+                    {
+                        //window opening
+                    }
                 }
                 break;
-
-                case SW2_DOWN:
+                case SW2_STATE_CHANGE:
                 {
-                    demo_printf("%s: sw2_data = %d\n", __func__, SW_FOR_DATA);
+                    demo_printf("%s: sw2 %s\n", __func__, (SW_FOR_DATA==SW_DOWN?"down":"up"));
                     exti_irq_set(EXTI1_IRQn, ENABLE);
+
+                    if(SW_FOR_DATA == SW_DOWN)
+                    {
+                        change_window_state(WINDOW_UP);
+                    }
                 }
                 break;
 
-                case SW3_DOWN:
+                case SW3_STATE_CHANGE:
                 {
-                    demo_printf("%s: sw3_data = %d\n", __func__, SW_DOW1_DATA);
+                    demo_printf("%s: sw3 %s\n", __func__, (SW_DOW1_DATA==SW_DOWN?"down":"up"));
                     exti_irq_set(EXTI2_IRQn, ENABLE);
+
+                    if(SW_DOW1_DATA == SW_DOWN)
+                    {
+                        change_window_state(WINDOW_BACKWARD);
+                    }
                 }
                 break;
-                case SW5_DOWN:
+                case SW5_STATE_CHANGE:
                 {
-                    demo_printf("%s: sw5_data = %d\n", __func__, SW_DOW2_DATA);
+                    demo_printf("%s: sw5 %s\n", __func__, (SW_DOW2_DATA==SW_DOWN?"down":"up"));
                     exti_irq_set(EXTI4_IRQn, ENABLE);
+
+                    if(SW_DOW2_DATA == SW_DOWN)
+                    {
+                        change_window_state(WINDOW_BACKWARD);
+                    }
                 }
                 break;
 
-                case SW4_DOWN:
+                case SW4_STATE_CHANGE:
                 {
-                    demo_printf("%s: sw4_data = %d\n", __func__, SW_UP1_DATA);
+                    demo_printf("%s: sw4 %s\n", __func__, (SW_UP1_DATA==SW_DOWN?"down":"up"));
                     exti_irq_set(EXTI3_IRQn, ENABLE);
+
+                    if(SW_UP1_DATA == SW_DOWN)
+                    {
+                        change_window_state(WINDOW_OPENED);
+                    }
                 }
                 break;
-                case SW6_DOWN:
+                case SW6_STATE_CHANGE:
                 {
-                    demo_printf("%s: sw6_data = %d\n", __func__, SW_UP2_DATA);
+                    demo_printf("%s: sw6 %s\n", __func__, (SW_UP2_DATA==SW_DOWN?"down":"up"));
                     exti_irq_set(EXTI9_5_IRQn, ENABLE);
+
+                    if(SW_UP2_DATA == SW_DOWN)
+                    {
+                        change_window_state(WINDOW_OPENED);
+                    }
                 }
                 break;
                 default:
