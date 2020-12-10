@@ -248,20 +248,6 @@ static void motor_ctrl(uint8_t motor_index, uint8_t state, uint8_t speed)
     #endif
 }
 
-static void led_toggle(void)
-{
-    if(LED_RD_DATA == 0)
-    {
-        LED_WR_DATA(Bit_SET);
-        //demo_printf("led on\n");
-    }
-    else 
-    {
-        LED_WR_DATA(Bit_RESET);
-        //demo_printf("led off\n");
-    }
-}
-
 static void exti_irq_set(IRQn_Type type, FunctionalState state)
 {
     uint32_t exti_linex = 0;
@@ -654,13 +640,25 @@ void demo_task_init(void)
 #if 1  //demo
 void demo_task(void *param)
 {
-    uint32_t demo_cnt = 0;
+    //uint32_t demo_cnt = 0;
     while(1)
     {
-        //demo_printf("%s: .... %d\n", __func__, demo_cnt);
-        demo_cnt ++;
-        led_toggle();
-        vTaskDelay(1000/portTICK_PERIOD_MS);
+        //demo_printf("%s: .... %d\n", __func__, demo_cnt++);
+        #if 0
+        if(LED_RD_DATA == 0)
+        {
+            LED_WR_DATA(Bit_SET);
+        }
+        else 
+        {
+            LED_WR_DATA(Bit_RESET);
+        }
+        #else
+        LED_WR_DATA(Bit_SET);
+        vTaskDelay(100/portTICK_PERIOD_MS);
+        LED_WR_DATA(Bit_RESET);
+        #endif
+        vTaskDelay(900/portTICK_PERIOD_MS);
     }
 }
 
