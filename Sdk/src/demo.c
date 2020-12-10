@@ -25,9 +25,22 @@ QueueHandle_t queue_motor = NULL;
 
 window_t window = {0};
 //-------------------------------------------------------------------------------
-//PWM -> PA8 PA9 PA10 PA11   PC8 PC9
-#define M_ab(state, pwm)  do{}while(0); //state: 0->stop;1->forward;2->backward
+//PWM -> (Mc)PA8 PA9, (Mab)PA10 PA11, (Md)PC8 PC9
+#define MOTOR_CTR_PWM_ENABLE       0
 
+#if !MOTOR_CTR_PWM_ENABLE
+#define M_AB_PORT           GPIOA
+#define M_AB_F_PIN          GPIO_Pin_11
+#define M_AB_B_PIN          GPIO_Pin_10
+
+#define M_C_PORT            GPIOA
+#define M_C_F_PIN           GPIO_Pin_9
+#define M_C_B_PIN           GPIO_Pin_8
+
+#define M_D_PORT            GPIOC
+#define M_D_F_PIN           GPIO_Pin_9
+#define M_D_B_PIN           GPIO_Pin_8
+#endif
 
 //EXTI-> PC0 PC1 PC2 PC3 PC4 PC5
 #define SWITCH_PORT         GPIOC
@@ -73,87 +86,163 @@ static void window_task(void *param);
 //----------------------------------------------------------------------
 static void motor_ctrl(uint8_t motor_index, uint8_t state, uint8_t speed)
 {
-    switch(state)
+    #if MOTOR_CTR_PWM_ENABLE
+    switch(motor_index)
     {
-        case M_STOP:
+        case M_ab:
         {
-            if(motor_index == M_ab)
+            if(state == M_STOP)
             {
                 TIM_SetCompare4(TIM1, 0); //FOR_F
-                TIM_SetCompare3(TIM1, 0);   //BAC_BS
+                TIM_SetCompare3(TIM1, 0); //BAC_B
             }
-            if(motor_index == M_c)
-            {
-                TIM_SetCompare2(TIM1, 0); //UP1_F
-                TIM_SetCompare1(TIM1, 0);   //DOW1_B 
-            }
-            if(motor_index == M_d)
-            {
-                TIM_SetCompare4(TIM3, 0); //UP2_F
-                TIM_SetCompare3(TIM3, 0);   //DOW2_B 
-            } 
-        }
-        break;
-        case M_FORWARD:
-        {
-            if(motor_index == M_ab)
+            else if(state == M_FORWARD)
             {
                 TIM_SetCompare4(TIM1, 255); //FOR_F
-                TIM_SetCompare3(TIM1, 0);   //BAC_BS
+                TIM_SetCompare3(TIM1, 0);   //BAC_B
             }
-            if(motor_index == M_c)
+            else if(state == M_BACKWARD) 
+            {
+                TIM_SetCompare4(TIM1, 0); //FOR_F
+                TIM_SetCompare3(TIM1, 255); //BAC_B
+            }
+            else if(state == M_BRAKE)
+            {
+                TIM_SetCompare4(TIM1, 255); //FOR_F
+                TIM_SetCompare3(TIM1, 255); //BAC_B
+            }
+        }
+        break;
+        case M_c:
+        {
+            if(state == M_STOP)
+            {
+                TIM_SetCompare2(TIM1, 0); //UP1_F
+                TIM_SetCompare1(TIM1, 0); //DOW1_B
+            }
+            else if(state == M_FORWARD)
             {
                 TIM_SetCompare2(TIM1, 255); //UP1_F
-                TIM_SetCompare1(TIM1, 0);   //DOW1_B 
+                TIM_SetCompare1(TIM1, 0); //DOW1_B
             }
-            if(motor_index == M_d)
+            else if(state == M_BACKWARD)
+            {
+                TIM_SetCompare2(TIM1, 0); //UP1_F
+                TIM_SetCompare1(TIM1, 255); //DOW1_B
+            }
+            else if(state == M_BRAKE)
+            {
+                TIM_SetCompare2(TIM1, 255); //UP1_F
+                TIM_SetCompare1(TIM1, 255); //DOW1_B
+            }
+        }
+        break;
+        case M_d:
+        {
+            if(state == M_STOP)
+            {
+                TIM_SetCompare4(TIM3, 0); //UP2_F
+                TIM_SetCompare3(TIM3, 0); //DOW2_B 
+            }
+            else if(state == M_FORWARD)
             {
                 TIM_SetCompare4(TIM3, 255); //UP2_F
-                TIM_SetCompare3(TIM3, 0);   //DOW2_B
-            } 
-        }
-        break;
-        case M_BACKWARD:
-        {
-            if(motor_index == M_ab)
-            {
-                TIM_SetCompare4(TIM1, 0);   //FOR_F
-                TIM_SetCompare3(TIM1, 255); //BAC_BS
+                TIM_SetCompare3(TIM3, 0); //DOW2_B 
             }
-            if(motor_index == M_c)
+            else if(state == M_BACKWARD)
             {
-                TIM_SetCompare2(TIM1, 0);   //UP1_F
-                TIM_SetCompare1(TIM1, 255); //DOW1_B //255
+                TIM_SetCompare4(TIM3, 0); //UP2_F
+                TIM_SetCompare3(TIM3, 255); //DOW2_B 
             }
-            if(motor_index == M_d)
+            else if(state == M_BRAKE)
             {
-                TIM_SetCompare4(TIM3, 0);   //UP2_F
-                TIM_SetCompare3(TIM3, 255); //DOW2_B //255
-            } 
-        }
-        break;
-        case M_BRAKE:
-        {
-            if(motor_index == M_ab)
-            {
-                TIM_SetCompare4(TIM1, 128); //FOR_F
-                TIM_SetCompare3(TIM1, 128);   //BAC_BS
+                TIM_SetCompare4(TIM3, 255); //UP2_F
+                TIM_SetCompare3(TIM3, 255); //DOW2_B 
             }
-            if(motor_index == M_c)
-            {
-                TIM_SetCompare2(TIM1, 128); //UP1_F
-                TIM_SetCompare1(TIM1, 128);   //DOW1_B 
-            }
-            if(motor_index == M_d)
-            {
-                TIM_SetCompare4(TIM3, 128); //UP2_F
-                TIM_SetCompare3(TIM3, 128);   //DOW2_B
-            } 
         }
         break;
         default:
         break;
     }
+    #else 
+    switch(motor_index)
+    {
+        case M_ab:
+        {
+            if(state == M_STOP)
+            {
+                GPIO_WriteBit(M_AB_PORT, M_AB_F_PIN, Bit_RESET); //FOR_F
+                GPIO_WriteBit(M_AB_PORT, M_AB_B_PIN, Bit_RESET); //BAC_B
+            }
+            else if(state == M_FORWARD)
+            {
+                GPIO_WriteBit(M_AB_PORT, M_AB_F_PIN, Bit_SET); //FOR_F
+                GPIO_WriteBit(M_AB_PORT, M_AB_B_PIN, Bit_RESET); //BAC_B
+            }
+            else if(state == M_BACKWARD) 
+            {
+                GPIO_WriteBit(M_AB_PORT, M_AB_F_PIN, Bit_RESET); //FOR_F
+                GPIO_WriteBit(M_AB_PORT, M_AB_B_PIN, Bit_SET); //BAC_B
+            }
+            else if(state == M_BRAKE)
+            {
+                GPIO_WriteBit(M_AB_PORT, M_AB_F_PIN, Bit_SET); //FOR_F
+                GPIO_WriteBit(M_AB_PORT, M_AB_B_PIN, Bit_SET); //BAC_B
+            }
+        }
+        break;
+        case M_c:
+        {
+            if(state == M_STOP)
+            {
+                GPIO_WriteBit(M_C_PORT, M_C_F_PIN, Bit_RESET); //UP1_F
+                GPIO_WriteBit(M_C_PORT, M_C_B_PIN, Bit_RESET); //DOW1_B
+            }
+            else if(state == M_FORWARD)
+            {
+                GPIO_WriteBit(M_C_PORT, M_C_F_PIN, Bit_SET); //UP1_F
+                GPIO_WriteBit(M_C_PORT, M_C_B_PIN, Bit_RESET); //DOW1_B
+            }
+            else if(state == M_BACKWARD)
+            {
+                GPIO_WriteBit(M_C_PORT, M_C_F_PIN, Bit_RESET); //UP1_F
+                GPIO_WriteBit(M_C_PORT, M_C_B_PIN, Bit_SET); //DOW1_B
+            }
+            else if(state == M_BRAKE)
+            {
+                GPIO_WriteBit(M_C_PORT, M_C_F_PIN, Bit_SET); //UP1_F
+                GPIO_WriteBit(M_C_PORT, M_C_B_PIN, Bit_SET); //DOW1_B
+            }
+        }
+        break;
+        case M_d:
+        {
+            if(state == M_STOP)
+            {
+                GPIO_WriteBit(M_D_PORT, M_D_F_PIN, Bit_RESET); //UP2_F
+                GPIO_WriteBit(M_D_PORT, M_D_B_PIN, Bit_RESET); //DOW2_B 
+            }
+            else if(state == M_FORWARD)
+            {
+                GPIO_WriteBit(M_D_PORT, M_D_F_PIN, Bit_SET); //UP2_F
+                GPIO_WriteBit(M_D_PORT, M_D_B_PIN, Bit_RESET); //DOW2_B 
+            }
+            else if(state == M_BACKWARD)
+            {
+                GPIO_WriteBit(M_D_PORT, M_D_F_PIN, Bit_RESET); //UP2_F
+                GPIO_WriteBit(M_D_PORT, M_D_B_PIN, Bit_SET); //DOW2_B 
+            }
+            else if(state == M_BRAKE)
+            {
+                GPIO_WriteBit(M_D_PORT, M_D_F_PIN, Bit_SET); //UP2_F
+                GPIO_WriteBit(M_D_PORT, M_D_B_PIN, Bit_SET); //DOW2_B 
+            }
+        }
+        break;
+        default:
+        break;
+    }
+    #endif
 }
 
 static void led_toggle(void)
@@ -238,15 +327,24 @@ static void bsp_init(void)
 {
     GPIO_InitTypeDef        GPIO_InitStructure;
 //--------------------------------------------------------------
-//pwm
-#if 0
+//pwm or io
+#if !MOTOR_CTR_PWM_ENABLE
+    //PA8,PA9,PA10,PA11, //PC8,PC9 
     RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA, ENABLE);
     GPIO_InitStructure.GPIO_Pin = GPIO_Pin_8|GPIO_Pin_9|GPIO_Pin_10|GPIO_Pin_11; //TIM_CH1-4
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP; 
 	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
 	GPIO_Init(GPIOA, &GPIO_InitStructure);
     GPIO_ResetBits(GPIOA, GPIO_Pin_8|GPIO_Pin_9|GPIO_Pin_10|GPIO_Pin_11);
-#elif 1
+
+    RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOC, ENABLE);
+    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_8|GPIO_Pin_9; 
+	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP; 
+	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+	GPIO_Init(GPIOC, &GPIO_InitStructure);
+    GPIO_ResetBits(GPIOC, GPIO_Pin_8|GPIO_Pin_9);
+#else
+    //PA8,PA9,PA10,PA11 -> TIM1 -> TIM_CH1-4
 	TIM_TimeBaseInitTypeDef TIM_TimeBaseStructure;
 	TIM_OCInitTypeDef       TIM_OCInitStructure;
 
@@ -284,16 +382,6 @@ static void bsp_init(void)
     TIM_CtrlPWMOutputs(TIM1,ENABLE);
 	TIM_Cmd(TIM1, ENABLE); 
     
-    #if 0
-    TIM_SetCompare1(TIM1, 50);//SystemCoreClock/(2*1000)); // ???
-    TIM_SetCompare2(TIM1, 50);//SystemCoreClock/(2*1000)); //
-    TIM_SetCompare3(TIM1, 100);//SystemCoreClock/(2*1000)); //
-    TIM_SetCompare4(TIM1, 100);//SystemCoreClock/(2*1000)); //
-    #endif
-#endif
-//--------------------------------------------------------------
-//pwm
-#if 1
     //PC8,PC9 -> TIM3 -> TIM_CH3-4
     RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM3, ENABLE);
  	RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOC, ENABLE);
@@ -323,12 +411,7 @@ static void bsp_init(void)
     TIM_OC3PreloadConfig(TIM3, TIM_OCPreload_Enable);
     TIM_OC4PreloadConfig(TIM3, TIM_OCPreload_Enable);
     //TIM_ARRPreloadConfig(TIM3, ENABLE);
-	TIM_Cmd(TIM3, ENABLE);
-    
-    #if 0
-    TIM_SetCompare3(TIM3, 100);//SystemCoreClock/(2*1000)
-    TIM_SetCompare4(TIM3, 100);//SystemCoreClock/(2*1000)
-    #endif
+	TIM_Cmd(TIM3, ENABLE);  
 #endif
 //--------------------------------------------------------------
 //switch
