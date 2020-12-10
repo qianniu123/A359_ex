@@ -73,6 +73,10 @@ typedef enum
     SW4_STATE_CHANGE,
     SW5_STATE_CHANGE,
     SW6_STATE_CHANGE,
+
+    BUTTON_F_STATE_CHANGE,
+    BUTTON_R_STATE_CHANGE
+    
 }sw_state_t;
 
 

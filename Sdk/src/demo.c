@@ -42,7 +42,7 @@ window_t window = {0};
 #define M_D_B_PIN           GPIO_Pin_8
 #endif
 
-//EXTI-> PC0 PC1 PC2 PC3 PC4 PC5
+//EXTI-> PC0 PC1 PC2 PC3 PC4 PC5; PB8 PB9
 #define SWITCH_PORT         GPIOC
 #define SW2_PIN             GPIO_Pin_0
 #define SW1_PIN             GPIO_Pin_1
@@ -57,6 +57,9 @@ window_t window = {0};
 #define SW4_IRQn            EXTI2_IRQn
 #define SW5_IRQn            EXTI9_5_IRQn
 #define SW6_IRQn            EXTI4_IRQn
+
+#define BUTTON_FORWARD_IRQn EXTI9_5_IRQn
+#define BUTTON_REVERSE_IRQn EXTI9_5_IRQn
 //---
 #define SW_BAC_DATA         GPIO_ReadInputDataBit(SWITCH_PORT, SW1_PIN)
 #define SW_FOR_DATA         GPIO_ReadInputDataBit(SWITCH_PORT, SW2_PIN)
@@ -70,17 +73,17 @@ window_t window = {0};
 #define BUTTON_FORWARD_PIN  GPIO_Pin_9
 #define BUTTON_REVERSE_PIN  GPIO_Pin_8
 //---
+#define BUTTON_DATA_SETBIT  GPIO_SetBits(BUTTON_PORT, BUTTON_FORWARD_PIN|BUTTON_REVERSE_PIN);
 #define BUTTON_FORWARD_DATA GPIO_ReadInputDataBit(BUTTON_PORT, BUTTON_FORWARD_PIN)
 #define BUTTON_REVERSE_DATA GPIO_ReadInputDataBit(BUTTON_PORT, BUTTON_REVERSE_PIN)
 
 //led -> PB3
 #define LED_PORT            GPIOB
 #define LED_PIN             GPIO_Pin_3
-#define LED_RD_DATA         GPIO_ReadOutputDataBit(LED_PORT, LED_PIN) //GPIO_ReadInputDataBit(LED_PORT, LED_PIN) //
+#define LED_RD_DATA         GPIO_ReadOutputDataBit(LED_PORT, LED_PIN) //GPIO_ReadInputDataBit(LED_PORT, LED_PIN)
 #define LED_WR_DATA(val)    GPIO_WriteBit(LED_PORT, LED_PIN, val)
 //----------------------------------------------------------------------
 static void demo_task(void *param);
-static void button_task(void *param);
 static void switch_task(void *param);
 static void window_task(void *param);
 //----------------------------------------------------------------------
@@ -291,7 +294,7 @@ static void exti_irq_set(IRQn_Type type, FunctionalState state)
         break;
         case EXTI9_5_IRQn:
         {
-            exti_linex = EXTI_Line5;
+            exti_linex = EXTI_Line5|EXTI_Line8|EXTI_Line9;
         }
         break;
         default:
@@ -414,15 +417,15 @@ static void bsp_init(void)
 	TIM_Cmd(TIM3, ENABLE);  
 #endif
 //--------------------------------------------------------------
-//switch
+//EXTI
 #if 1
-    //GPIO_InitTypeDef        GPIO_InitStructure;
+//switchs
 	RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOC, ENABLE);	
     RCC_APB2PeriphClockCmd(RCC_APB2Periph_AFIO,ENABLE); //exti, need enable AFIO clk
 
     GPIO_InitStructure.GPIO_Pin =  GPIO_Pin_0|GPIO_Pin_1|GPIO_Pin_2|GPIO_Pin_3|GPIO_Pin_4|GPIO_Pin_5;
     GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IPU;  
-    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;		 
+    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_2MHz;//50MHZ		 
     GPIO_Init(GPIOC, &GPIO_InitStructure);
     GPIO_SetBits(GPIOC, GPIO_Pin_0|GPIO_Pin_1|GPIO_Pin_2|GPIO_Pin_3|GPIO_Pin_4|GPIO_Pin_5);
 
@@ -432,11 +435,22 @@ static void bsp_init(void)
     GPIO_EXTILineConfig(GPIO_PortSourceGPIOC, GPIO_PinSource3);//SW3
     GPIO_EXTILineConfig(GPIO_PortSourceGPIOC, GPIO_PinSource4);//SW6
     GPIO_EXTILineConfig(GPIO_PortSourceGPIOC, GPIO_PinSource5);//SW5
+//buttons
+    RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOB, ENABLE);
+    RCC_APB2PeriphClockCmd(RCC_APB2Periph_AFIO,ENABLE); //exti, need enable AFIO clk
+    GPIO_InitStructure.GPIO_Pin = BUTTON_FORWARD_PIN|BUTTON_REVERSE_PIN;
+	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IPU; 
+	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_2MHz;
+	GPIO_Init(BUTTON_PORT, &GPIO_InitStructure);
+    GPIO_SetBits(BUTTON_PORT, BUTTON_FORWARD_PIN|BUTTON_REVERSE_PIN);
+
+    GPIO_EXTILineConfig(GPIO_PortSourceGPIOB, GPIO_PinSource9);//button forward
+    GPIO_EXTILineConfig(GPIO_PortSourceGPIOB, GPIO_PinSource8);//button reverse
 
     EXTI_InitTypeDef EXTI_InitStructure;
-    EXTI_InitStructure.EXTI_Line    = EXTI_Line0|EXTI_Line1|EXTI_Line2|EXTI_Line3|EXTI_Line4|EXTI_Line5;
+    EXTI_InitStructure.EXTI_Line    = EXTI_Line0|EXTI_Line1|EXTI_Line2|EXTI_Line3|EXTI_Line4|EXTI_Line5|EXTI_Line8|EXTI_Line9;
 	EXTI_InitStructure.EXTI_Mode    = EXTI_Mode_Interrupt;
-	EXTI_InitStructure.EXTI_Trigger = EXTI_Trigger_Rising_Falling;
+	EXTI_InitStructure.EXTI_Trigger = EXTI_Trigger_Falling;//EXTI_Trigger_Rising_Falling;//!!!???
 	EXTI_InitStructure.EXTI_LineCmd = ENABLE;
 	EXTI_Init(&EXTI_InitStructure);
 
@@ -471,16 +485,6 @@ static void bsp_init(void)
 	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
 	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
 	NVIC_Init(&NVIC_InitStructure);
-#endif
-//----------------------------------------------------------------------
-//button
-#if 1
-    RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOB, ENABLE);
-    GPIO_InitStructure.GPIO_Pin = BUTTON_FORWARD_PIN|BUTTON_REVERSE_PIN;
-	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IPU; 
-	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-	GPIO_Init(BUTTON_PORT, &GPIO_InitStructure);
-    GPIO_SetBits(BUTTON_PORT, BUTTON_FORWARD_PIN|BUTTON_REVERSE_PIN);
 #endif
 //----------------------------------------------------------------------
 //LED
@@ -556,7 +560,7 @@ void EXTI4_IRQHandler(void)
 {
     if(EXTI_GetITStatus(EXTI_Line4))
     {
-        demo_printf("%s: 666\n", __func__);
+        demo_printf("%s: 66666\n", __func__);
         exti_irq_set(SW6_IRQn, DISABLE);
         msg_t msg = {SW6_STATE_CHANGE, 0};
         BaseType_t xHigherPriorityTaskWoken = pdFALSE;
@@ -569,13 +573,33 @@ void EXTI9_5_IRQHandler(void)
 {
     if(EXTI_GetITStatus(EXTI_Line5))
     {
-        demo_printf("%s: 555\n", __func__);
+        demo_printf("%s: 55555\n", __func__);
         exti_irq_set(SW5_IRQn, DISABLE);
         msg_t msg = {SW5_STATE_CHANGE, 0};
         BaseType_t xHigherPriorityTaskWoken = pdFALSE;
         xQueueSendFromISR(queue_sw, &msg, &xHigherPriorityTaskWoken);
         portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
         EXTI_ClearITPendingBit(EXTI_Line5);
+    }
+    else if(EXTI_GetITStatus(EXTI_Line8))
+    {
+        demo_printf("%s: button reverse\n", __func__);
+        exti_irq_set(BUTTON_REVERSE_IRQn, DISABLE);
+        msg_t msg = {BUTTON_R_STATE_CHANGE, 0};
+        BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+        xQueueSendFromISR(queue_sw, &msg, &xHigherPriorityTaskWoken);
+        portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+        EXTI_ClearITPendingBit(EXTI_Line8);
+    }
+    else if(EXTI_GetITStatus(EXTI_Line9))
+    {
+        demo_printf("%s: button forward\n", __func__);
+        exti_irq_set(BUTTON_FORWARD_IRQn, DISABLE);
+        msg_t msg = {BUTTON_F_STATE_CHANGE, 0};
+        BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+        xQueueSendFromISR(queue_sw, &msg, &xHigherPriorityTaskWoken);
+        portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+        EXTI_ClearITPendingBit(EXTI_Line9);
     }
 }
 
@@ -590,16 +614,6 @@ void demo_task_init(void)
                                 NULL))
     {
         demo_printf("create demo_task error\n");
-    }
-    
-    if(pdFALSE == xTaskCreate(button_task, 
-                                BUTTON_TASK_NAME,
-                                BUTTON_TASK_STK_SIZE,
-                                NULL,
-                                BUTTON_TASK_PRI,
-                                NULL))
-    {
-        demo_printf("create button_task error\n");
     }
 
     queue_motor = xQueueCreate(MOTOR_QUEUE_SIZE, sizeof(msg_t));
@@ -650,58 +664,6 @@ void demo_task(void *param)
     }
 }
 
-static void button_task(void *param)
-{
-    while(1)
-    {
-        if(BUTTON_FORWARD_DATA == BUTTON_DOWN)
-        {
-            vTaskDelay(20/portTICK_PERIOD_MS);
-            if(BUTTON_FORWARD_DATA == BUTTON_DOWN)
-            {
-                demo_printf("%s: button forward down\n", __func__);
-                //start forward -> send msg
-                if(window.state < WINDOW_OPEN || window.state > WINDOW_OPENED)
-                {
-                    change_window_state(WINDOW_OPEN);
-                }
-            }
-        }
-        else if(BUTTON_REVERSE_DATA == BUTTON_DOWN)
-        {
-            vTaskDelay(20/portTICK_PERIOD_MS);
-            if(BUTTON_REVERSE_DATA == BUTTON_DOWN)
-            {
-                demo_printf("%s: button reverse down\n", __func__);
-                //start backward -> send msg
-                if(window.state < WINDOW_CLOSE || window.state > WINDOW_CLOSED)
-                {
-                   change_window_state(WINDOW_CLOSE);
-                }
-            }
-        }
-        else 
-        {
-            //demo_printf("%s: button_forward_data = %d, button_backward_data = %d\n", __func__, BUTTON_FORWARD_DATA, BUTTON_REVERSE_DATA);
-            if(BUTTON_FORWARD_DATA == BUTTON_UP && BUTTON_REVERSE_DATA == BUTTON_UP )
-            {
-                vTaskDelay(20/portTICK_PERIOD_MS);
-                if(BUTTON_FORWARD_DATA == BUTTON_UP && BUTTON_REVERSE_DATA == BUTTON_UP)
-                {
-                    //demo_printf("%s: button forward&backward up\n", __func__);
-                    //stop close -> send msg
-                    if(window.state != WINDOW_STOP)
-                    {
-                        change_window_state(WINDOW_STOP);
-                    }
-                }
-            }
-        }
-        vTaskDelay(100/portTICK_PERIOD_MS);//100
-    }
-
-}
-
 static void window_task(void *param)
 {
     msg_t msg = {0};
@@ -726,6 +688,11 @@ static void window_task(void *param)
                 case WINDOW_OPEN:
                 {
                     demo_printf("%s: WINDOW_OPEN\n", __func__);
+                    #if 0 //for motor test
+                        motor_ctrl(M_ab, M_FORWARD, 255);
+                        motor_ctrl(M_c, M_FORWARD, 255);
+                        motor_ctrl(M_d, M_FORWARD, 255);
+                    #else
                     if(SW_FOR_DATA != SW_DOWN)
                     {
                         change_window_state(WINDOW_FORWARD);
@@ -741,6 +708,7 @@ static void window_task(void *param)
                             change_window_state(WINDOW_OPENED);
                         }
                     }
+                    #endif
                 }
                 break;
                 case WINDOW_FORWARD:
@@ -789,6 +757,11 @@ static void window_task(void *param)
                 case WINDOW_CLOSE:
                 {
                     demo_printf("%s: WINDOW_CLOSE\n", __func__);
+                    #if 0 // for motor test
+                        motor_ctrl(M_ab, M_BACKWARD, 255);
+                        motor_ctrl(M_c, M_BACKWARD, 255);
+                        motor_ctrl(M_d, M_BACKWARD, 255);
+                    #else
                     if(SW_DOW1_DATA != SW_DOWN || SW_DOW2_DATA != SW_DOWN)
                     {
                         change_window_state(WINDOW_DOWN);
@@ -804,6 +777,7 @@ static void window_task(void *param)
                             change_window_state(WINDOW_CLOSED);
                         }
                     }
+                    #endif
                 }
                 break;
                 case WINDOW_DOWN:
@@ -868,7 +842,6 @@ static void switch_task(void *param)
         {
             uint8_t sw_state = msg.msg_id;
             uint8_t change_flag  = (get_window_state() == WINDOW_STOP?0:1);
-           
             vTaskDelay(20/portTICK_PERIOD_MS);//debounce
             
             switch(sw_state)
@@ -886,10 +859,6 @@ static void switch_task(void *param)
                     if(change_flag && SW_BAC_DATA == SW_DOWN)
                     {
                         change_window_state(WINDOW_CLOSED);
-                    }
-                    else 
-                    {
-                        //window opening
                     }
                 }
                 break;
@@ -950,6 +919,51 @@ static void switch_task(void *param)
                     }
                 }
                 break;
+
+                case BUTTON_F_STATE_CHANGE:
+                {
+                    demo_printf("%s: button forward %s\n", __func__, (BUTTON_FORWARD_DATA == BUTTON_DOWN?"down":"up"));
+                    exti_irq_set(BUTTON_FORWARD_IRQn, ENABLE);
+                    
+                    if(BUTTON_FORWARD_DATA == BUTTON_DOWN)
+                    {
+                        //open window
+                        if(window.state < WINDOW_OPEN || window.state > WINDOW_OPENED)
+                        {
+                            change_window_state(WINDOW_OPEN);
+                        }
+                    }
+                    else if(BUTTON_REVERSE_DATA == BUTTON_UP)
+                    { 
+                        if(window.state != WINDOW_STOP)
+                        {
+                            change_window_state(WINDOW_STOP);
+                        }
+                    }
+                }
+                break;
+                case BUTTON_R_STATE_CHANGE:
+                {
+                    demo_printf("%s: button reverse %s\n", __func__, (BUTTON_REVERSE_DATA == BUTTON_DOWN?"down":"up"));
+                    exti_irq_set(BUTTON_REVERSE_IRQn, ENABLE);
+                    
+                    if(BUTTON_REVERSE_DATA == BUTTON_DOWN)
+                    {
+                        //close window
+                        if(window.state < WINDOW_CLOSE || window.state > WINDOW_CLOSED)
+                        {
+                           change_window_state(WINDOW_CLOSE);
+                        }
+                    }
+                    else if(BUTTON_FORWARD_DATA == BUTTON_UP)
+                    {
+                        if(window.state != WINDOW_STOP)
+                        {
+                            change_window_state(WINDOW_STOP);
+                        }
+                    }
+                }
+                break;
                 default:
                 break;
             }
@@ -959,4 +973,56 @@ static void switch_task(void *param)
 
 #endif
 
+#if 0
+static void button_task(void *param)
+{
+    while(1)
+    {
+        if(BUTTON_FORWARD_DATA == BUTTON_DOWN)
+        {
+            vTaskDelay(20/portTICK_PERIOD_MS);
+            if(BUTTON_FORWARD_DATA == BUTTON_DOWN)
+            {
+                demo_printf("%s: button forward down\n", __func__);
+                //start forward -> send msg
+                if(window.state < WINDOW_OPEN || window.state > WINDOW_OPENED)
+                {
+                    change_window_state(WINDOW_OPEN);
+                }
+            }
+        }
+        else if(BUTTON_REVERSE_DATA == BUTTON_DOWN)
+        {
+            vTaskDelay(20/portTICK_PERIOD_MS);
+            if(BUTTON_REVERSE_DATA == BUTTON_DOWN)
+            {
+                demo_printf("%s: button reverse down\n", __func__);
+                //start backward -> send msg
+                if(window.state < WINDOW_CLOSE || window.state > WINDOW_CLOSED)
+                {
+                   change_window_state(WINDOW_CLOSE);
+                }
+            }
+        }
+        else 
+        {
+            //demo_printf("%s: button_forward_data = %d, button_backward_data = %d\n", __func__, BUTTON_FORWARD_DATA, BUTTON_REVERSE_DATA);
+            if(BUTTON_FORWARD_DATA == BUTTON_UP && BUTTON_REVERSE_DATA == BUTTON_UP )
+            {
+                vTaskDelay(20/portTICK_PERIOD_MS);
+                if(BUTTON_FORWARD_DATA == BUTTON_UP && BUTTON_REVERSE_DATA == BUTTON_UP)
+                {
+                    //demo_printf("%s: button forward&backward up\n", __func__);
+                    //stop close -> send msg
+                    if(window.state != WINDOW_STOP)
+                    {
+                        change_window_state(WINDOW_STOP);
+                    }
+                }
+            }
+        }
+        vTaskDelay(100/portTICK_PERIOD_MS);//100
+    }
 
+}
+#endif
