@@ -816,18 +816,24 @@ static void window_task(void *param)
                 case WINDOW_BACKWARD:
                 {
                     demo_printf("%s: WINDOW_BACKWARD\n", __func__);
-                    
-                    motor_ctrl(M_c, M_STOP, 0);
-                    motor_ctrl(M_d, M_STOP, 0);
-                    if(SW_BAC_DATA != SW_DOWN)
+                    if(SW_DOW1_DATA == SW_DOWN && SW_DOW2_DATA == SW_DOWN)
                     {
-                        motor_ctrl(M_ab, M_BACKWARD, 255);
+                        motor_ctrl(M_c, M_STOP, 0);
+                        motor_ctrl(M_d, M_STOP, 0);
+                        if(SW_BAC_DATA != SW_DOWN)
+                        {
+                            motor_ctrl(M_ab, M_BACKWARD, 255);
+                        }
+                        else 
+                        {
+                            motor_ctrl(M_ab, M_STOP, 0);
+                            change_window_state(WINDOW_CLOSED);
+                        } 
                     }
                     else 
                     {
-                        motor_ctrl(M_ab, M_STOP, 0);
-                        change_window_state(WINDOW_CLOSED);
-                    }   
+                        change_window_state(WINDOW_DOWN);
+                    }
                 }
                 break;
                 case WINDOW_CLOSED:
