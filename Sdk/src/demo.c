@@ -12,9 +12,9 @@
 
 #define SW_TASK_NAME            "SW_TASK"
 #define SW_TASK_PRI             4           //high pri 
-#define SW_TASK_STK_SIZE        128
+#define SW_TASK_STK_SIZE        256
 
-#define SW_QUEUE_SIZE       5
+#define SW_QUEUE_SIZE       10
 QueueHandle_t queue_sw = NULL;
 #define MOTOR_QUEUE_SIZE    5
 QueueHandle_t queue_motor = NULL;
