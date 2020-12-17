@@ -492,102 +492,153 @@ static void bsp_init(void)
     demo_printf("%s: bsp init\n", __func__);
 }
 
+#define DEBOUNCE_TICK   (20*portTICK_PERIOD_MS) //ms
 void EXTI0_IRQHandler(void)
 {
+    static TickType_t tick_cnt = 0;
     if(EXTI_GetITStatus(EXTI_Line0))
     {
-        demo_printf("%s: 22222\n", __func__);
-        exti_irq_set(SW2_IRQn, DISABLE);
-        msg_t msg = {SW2_STATE_CHANGE, 0};
-        BaseType_t xHigherPriorityTaskWoken = pdFALSE;
-        xQueueSendFromISR(queue_sw, &msg, &xHigherPriorityTaskWoken);
-        portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
-        EXTI_ClearITPendingBit(EXTI_Line0);
+        //exti_irq_set(SW2_IRQn, DISABLE);
+        TickType_t tick_cnt_cur = xTaskGetTickCountFromISR();
+        if(tick_cnt_cur > tick_cnt + DEBOUNCE_TICK)
+        {
+            demo_printf("%s: 22222\n", __func__);
+            tick_cnt = tick_cnt_cur;
+            msg_t msg = {SW2_STATE_CHANGE, 0};
+            BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+            xQueueSendFromISR(queue_sw, &msg, &xHigherPriorityTaskWoken);
+            portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+            EXTI_ClearITPendingBit(EXTI_Line0);
+        }
     }
 }
+
 void EXTI1_IRQHandler(void)
 {
+    static TickType_t tick_cnt = 0;
     if(EXTI_GetITStatus(EXTI_Line1))
     {
-        demo_printf("%s: 11111\n", __func__);
-        exti_irq_set(SW1_IRQn, DISABLE);
-        msg_t msg = {SW1_STATE_CHANGE, 0};
-        BaseType_t xHigherPriorityTaskWoken = pdFALSE;
-        xQueueSendFromISR(queue_sw, &msg, &xHigherPriorityTaskWoken);
-        portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
-        EXTI_ClearITPendingBit(EXTI_Line1);
+        //exti_irq_set(SW1_IRQn, DISABLE);
+        TickType_t tick_cnt_cur = xTaskGetTickCountFromISR();
+        if(tick_cnt_cur > tick_cnt + DEBOUNCE_TICK)
+        {
+            demo_printf("%s: 11111\n", __func__);
+            tick_cnt = tick_cnt_cur;
+            msg_t msg = {SW1_STATE_CHANGE, 0};
+            BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+            xQueueSendFromISR(queue_sw, &msg, &xHigherPriorityTaskWoken);
+            portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+            EXTI_ClearITPendingBit(EXTI_Line1);
+        }
     }
 }
 void EXTI2_IRQHandler(void)
 {
+    static TickType_t tick_cnt = 0;
     if(EXTI_GetITStatus(EXTI_Line2))
     {
-        demo_printf("%s: 44444\n", __func__);
-        exti_irq_set(SW4_IRQn, DISABLE);
-        msg_t msg = {SW4_STATE_CHANGE, 0};
-        BaseType_t xHigherPriorityTaskWoken = pdFALSE;
-        xQueueSendFromISR(queue_sw, &msg, &xHigherPriorityTaskWoken);
-        portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
-        EXTI_ClearITPendingBit(EXTI_Line2);
+        //exti_irq_set(SW4_IRQn, DISABLE);
+        TickType_t tick_cnt_cur = xTaskGetTickCountFromISR();
+        if(tick_cnt_cur > tick_cnt + DEBOUNCE_TICK)
+        {
+            demo_printf("%s: 44444\n", __func__);
+            tick_cnt = tick_cnt_cur;
+            msg_t msg = {SW4_STATE_CHANGE, 0};
+            BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+            xQueueSendFromISR(queue_sw, &msg, &xHigherPriorityTaskWoken);
+            portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+            EXTI_ClearITPendingBit(EXTI_Line2);
+        }
     }
 }
 void EXTI3_IRQHandler(void)
 {
+    static TickType_t tick_cnt = 0;
     if(EXTI_GetITStatus(EXTI_Line3))
     {
-        demo_printf("%s: 33333\n", __func__);
-        exti_irq_set(SW3_IRQn, DISABLE);
-        msg_t msg = {SW3_STATE_CHANGE, 0};
-        BaseType_t xHigherPriorityTaskWoken = pdFALSE;
-        xQueueSendFromISR(queue_sw, &msg, &xHigherPriorityTaskWoken);
-        portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
-        EXTI_ClearITPendingBit(EXTI_Line3);
+        //exti_irq_set(SW3_IRQn, DISABLE);
+        TickType_t tick_cnt_cur = xTaskGetTickCountFromISR();
+        if(tick_cnt_cur > tick_cnt + DEBOUNCE_TICK)
+        {
+            demo_printf("%s: 33333\n", __func__);
+            tick_cnt = tick_cnt_cur;
+            msg_t msg = {SW3_STATE_CHANGE, 0};
+            BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+            xQueueSendFromISR(queue_sw, &msg, &xHigherPriorityTaskWoken);
+            portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+            EXTI_ClearITPendingBit(EXTI_Line3);
+        }
     }
 }
 void EXTI4_IRQHandler(void)
 {
+    static TickType_t tick_cnt = 0;
     if(EXTI_GetITStatus(EXTI_Line4))
     {
-        demo_printf("%s: 66666\n", __func__);
-        exti_irq_set(SW6_IRQn, DISABLE);
-        msg_t msg = {SW6_STATE_CHANGE, 0};
-        BaseType_t xHigherPriorityTaskWoken = pdFALSE;
-        xQueueSendFromISR(queue_sw, &msg, &xHigherPriorityTaskWoken);
-        portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
-        EXTI_ClearITPendingBit(EXTI_Line4);
+        //exti_irq_set(SW6_IRQn, DISABLE);
+        TickType_t tick_cnt_cur = xTaskGetTickCountFromISR();
+        if(tick_cnt_cur > tick_cnt + DEBOUNCE_TICK)
+        {
+            demo_printf("%s: 66666\n", __func__);
+            tick_cnt = tick_cnt_cur;
+            msg_t msg = {SW6_STATE_CHANGE, 0};
+            BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+            xQueueSendFromISR(queue_sw, &msg, &xHigherPriorityTaskWoken);
+            portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+            EXTI_ClearITPendingBit(EXTI_Line4);
+        }
     }
 }
 void EXTI9_5_IRQHandler(void)
 {
+    static TickType_t tick_cnt5 = 0;
+    static TickType_t tick_cnt8 = 0;
+    static TickType_t tick_cnt9 = 0;
+
     if(EXTI_GetITStatus(EXTI_Line5))
     {
-        demo_printf("%s: 55555\n", __func__);
-        exti_irq_set(SW5_IRQn, DISABLE);
-        msg_t msg = {SW5_STATE_CHANGE, 0};
-        BaseType_t xHigherPriorityTaskWoken = pdFALSE;
-        xQueueSendFromISR(queue_sw, &msg, &xHigherPriorityTaskWoken);
-        portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
-        EXTI_ClearITPendingBit(EXTI_Line5);
+        //exti_irq_set(SW5_IRQn, DISABLE);
+        TickType_t tick_cnt_cur = xTaskGetTickCountFromISR();
+        if(tick_cnt_cur > tick_cnt5 + DEBOUNCE_TICK)
+        {
+            demo_printf("%s: 55555\n", __func__);
+            tick_cnt5 = tick_cnt_cur;
+            msg_t msg = {SW5_STATE_CHANGE, 0};
+            BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+            xQueueSendFromISR(queue_sw, &msg, &xHigherPriorityTaskWoken);
+            portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+            EXTI_ClearITPendingBit(EXTI_Line5);
+        }
     }
     else if(EXTI_GetITStatus(EXTI_Line8))
     {
-        demo_printf("%s: button reverse\n", __func__);
-        exti_irq_set(BUTTON_REVERSE_IRQn, DISABLE);
-        msg_t msg = {BUTTON_R_STATE_CHANGE, 0};
-        BaseType_t xHigherPriorityTaskWoken = pdFALSE;
-        xQueueSendFromISR(queue_sw, &msg, &xHigherPriorityTaskWoken);
-        portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
-        EXTI_ClearITPendingBit(EXTI_Line8);
+        //exti_irq_set(BUTTON_REVERSE_IRQn, DISABLE);
+        TickType_t tick_cnt_cur = xTaskGetTickCountFromISR();
+        if(tick_cnt_cur > tick_cnt8 + DEBOUNCE_TICK)
+        {
+            demo_printf("%s: button reverse\n", __func__);
+            tick_cnt8 = tick_cnt_cur;
+            msg_t msg = {BUTTON_R_STATE_CHANGE, 0};
+            BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+            xQueueSendFromISR(queue_sw, &msg, &xHigherPriorityTaskWoken);
+            portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+            EXTI_ClearITPendingBit(EXTI_Line8);
+        }
     }
     else if(EXTI_GetITStatus(EXTI_Line9))
     {
-        demo_printf("%s: button forward\n", __func__);
-        exti_irq_set(BUTTON_FORWARD_IRQn, DISABLE);
-        msg_t msg = {BUTTON_F_STATE_CHANGE, 0};
-        BaseType_t xHigherPriorityTaskWoken = pdFALSE;
-        xQueueSendFromISR(queue_sw, &msg, &xHigherPriorityTaskWoken);
-        portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
-        EXTI_ClearITPendingBit(EXTI_Line9);
+        //exti_irq_set(BUTTON_FORWARD_IRQn, DISABLE);
+        TickType_t tick_cnt_cur = xTaskGetTickCountFromISR();
+        if(tick_cnt_cur > tick_cnt9 + DEBOUNCE_TICK)
+        {   
+            demo_printf("%s: button forward\n", __func__);
+            tick_cnt9 = tick_cnt_cur;
+            msg_t msg = {BUTTON_F_STATE_CHANGE, 0};
+            BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+            xQueueSendFromISR(queue_sw, &msg, &xHigherPriorityTaskWoken);
+            portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+            EXTI_ClearITPendingBit(EXTI_Line9);
+        }
     }
 }
 
@@ -867,7 +918,7 @@ static void switch_task(void *param)
                 case SW1_STATE_CHANGE:
                 {
                     demo_printf("%s: sw1 %s\n", __func__, (SW_BAC_DATA==SW_DOWN?"down":"up"));
-                    exti_irq_set(SW1_IRQn, ENABLE);
+                    //exti_irq_set(SW1_IRQn, ENABLE);
 
                     if(get_window_state() == WINDOW_BACKWARD && SW_BAC_DATA == SW_DOWN)
                     {
@@ -878,7 +929,7 @@ static void switch_task(void *param)
                 case SW2_STATE_CHANGE:
                 {
                     demo_printf("%s: sw2 %s\n", __func__, (SW_FOR_DATA==SW_DOWN?"down":"up"));
-                    exti_irq_set(SW2_IRQn, ENABLE);
+                    //exti_irq_set(SW2_IRQn, ENABLE);
 
                     if(get_window_state() == WINDOW_FORWARD && SW_FOR_DATA == SW_DOWN)
                     {
@@ -890,7 +941,7 @@ static void switch_task(void *param)
                 case SW3_STATE_CHANGE:
                 {
                     demo_printf("%s: sw3 %s\n", __func__, (SW_DOW1_DATA==SW_DOWN?"down":"up"));
-                    exti_irq_set(SW3_IRQn, ENABLE);
+                    //exti_irq_set(SW3_IRQn, ENABLE);
 
                     if(get_window_state() == WINDOW_DOWN && SW_DOW1_DATA == SW_DOWN)
                     {
@@ -901,7 +952,7 @@ static void switch_task(void *param)
                 case SW5_STATE_CHANGE:
                 {
                     demo_printf("%s: sw5 %s\n", __func__, (SW_DOW2_DATA==SW_DOWN?"down":"up"));
-                    exti_irq_set(SW5_IRQn, ENABLE);
+                    //exti_irq_set(SW5_IRQn, ENABLE);
 
                     if(get_window_state() == WINDOW_DOWN && SW_DOW2_DATA == SW_DOWN)
                     {
@@ -913,7 +964,7 @@ static void switch_task(void *param)
                 case SW4_STATE_CHANGE:
                 {
                     demo_printf("%s: sw4 %s\n", __func__, (SW_UP1_DATA==SW_DOWN?"down":"up"));
-                    exti_irq_set(SW4_IRQn, ENABLE);
+                    //exti_irq_set(SW4_IRQn, ENABLE);
 
                     if(get_window_state() == WINDOW_UP && SW_UP1_DATA == SW_DOWN)
                     {
@@ -924,7 +975,7 @@ static void switch_task(void *param)
                 case SW6_STATE_CHANGE:
                 {
                     demo_printf("%s: sw6 %s\n", __func__, (SW_UP2_DATA==SW_DOWN?"down":"up"));
-                    exti_irq_set(SW6_IRQn, ENABLE);
+                    //exti_irq_set(SW6_IRQn, ENABLE);
 
                     if(get_window_state() == WINDOW_UP && SW_UP2_DATA == SW_DOWN)
                     {
@@ -936,7 +987,7 @@ static void switch_task(void *param)
                 case BUTTON_F_STATE_CHANGE:
                 {
                     demo_printf("%s: button forward %s\n", __func__, (BUTTON_FORWARD_DATA == BUTTON_DOWN?"down":"up"));
-                    exti_irq_set(BUTTON_FORWARD_IRQn, ENABLE);
+                    //exti_irq_set(BUTTON_FORWARD_IRQn, ENABLE);
                     
                     if(BUTTON_FORWARD_DATA == BUTTON_DOWN)
                     {
@@ -958,7 +1009,7 @@ static void switch_task(void *param)
                 case BUTTON_R_STATE_CHANGE:
                 {
                     demo_printf("%s: button reverse %s\n", __func__, (BUTTON_REVERSE_DATA == BUTTON_DOWN?"down":"up"));
-                    exti_irq_set(BUTTON_REVERSE_IRQn, ENABLE);
+                    //exti_irq_set(BUTTON_REVERSE_IRQn, ENABLE);
                     
                     if(BUTTON_REVERSE_DATA == BUTTON_DOWN)
                     {
