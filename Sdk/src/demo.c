@@ -20,7 +20,7 @@ QueueHandle_t queue_sw = NULL;
 QueueHandle_t queue_motor = NULL;
 
 window_t window = {0};
-char *software_version = "V0.2";
+char *software_version = "V0.3";
 //-------------------------------------------------------------------------------
 //PWM -> (Mc)PA8 PA9, (Mab)PA10 PA11, (Md)PC8 PC9
 #define MOTOR_CTR_PWM_ENABLE       0
@@ -245,6 +245,7 @@ static void motor_ctrl(uint8_t motor_index, uint8_t state, uint8_t speed)
     #endif
 }
 
+#if 0
 static void exti_irq_set(IRQn_Type type, FunctionalState state)
 {
     uint32_t exti_linex = 0;
@@ -297,6 +298,7 @@ static void exti_irq_set(IRQn_Type type, FunctionalState state)
 	NVIC_InitStructure.NVIC_IRQChannelCmd = state;
 	NVIC_Init(&NVIC_InitStructure);
 }
+#endif
 
 static void change_window_state(uint8_t new_state)
 {
@@ -770,7 +772,7 @@ static void window_task(void *param)
                 case WINDOW_UP:
                 {
                     demo_printf("%s: WINDOW_UP\n", __func__);
-                    if(SW_FOR_DATA == SW_DOWN)
+                    //if(SW_FOR_DATA == SW_DOWN)
                     {
                         motor_ctrl(M_ab, M_STOP, 0);
                         if(SW_UP1_DATA != SW_DOWN)
@@ -795,10 +797,10 @@ static void window_task(void *param)
                             change_window_state(WINDOW_OPENED);
                         }
                     }
-                    else 
-                    {
-                        change_window_state(WINDOW_FORWARD);
-                    }
+                    // else 
+                    // {
+                    //     change_window_state(WINDOW_FORWARD);
+                    // }
                 }
                 break;
                 case WINDOW_OPENED:
@@ -867,7 +869,7 @@ static void window_task(void *param)
                 case WINDOW_BACKWARD:
                 {
                     demo_printf("%s: WINDOW_BACKWARD\n", __func__);
-                    if(SW_DOW1_DATA == SW_DOWN && SW_DOW2_DATA == SW_DOWN)
+                    //if(SW_DOW1_DATA == SW_DOWN && SW_DOW2_DATA == SW_DOWN)
                     {
                         motor_ctrl(M_c, M_STOP, 0);
                         motor_ctrl(M_d, M_STOP, 0);
@@ -881,10 +883,10 @@ static void window_task(void *param)
                             change_window_state(WINDOW_CLOSED);
                         } 
                     }
-                    else 
-                    {
-                        change_window_state(WINDOW_DOWN);
-                    }
+                    // else 
+                    // {
+                    //     change_window_state(WINDOW_DOWN);
+                    // }
                 }
                 break;
                 case WINDOW_CLOSED:
